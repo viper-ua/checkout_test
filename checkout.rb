@@ -1,23 +1,20 @@
 class Checkout
-  attr_accessor :total
-  def initialize(pricing_rules)
+  def initialize(prices, pricing_rules)
     @cart = Hash.new(0)
-    @rules = Hash.new(->(_x) { 0 })
-    pricing_rules.each do |item, rule|
-      @rules[item] = eval "->(x) {#{rule}}"
-    end
+    @pricelist = prices
+    @pricing_rules = pricing_rules
   end
 
   def scan(item)
     @cart[item.to_sym] += 1
-    @total = cart_total
   end
 
-  private
-
-  def cart_total
-    total = 0
-    @cart.each { |item, quantity| total += @rules[item].call(quantity) }
-    total
+  def total
+    total, discount = 0.00, 0.00
+    @cart.each do |item, quantity|
+      total += @pricelist[item] * quantity
+    end
+    @pricing_rules.each { |rule| discount += rule.call(@cart, @pricelist) }
+    @total = (total - discount).round(2)
   end
 end

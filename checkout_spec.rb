@@ -1,30 +1,38 @@
 require_relative 'checkout'
 
-pricing = {
-  FR1: '(x / 2 + x % 2) * 3.11',
-  SR1: 'x < 3 ? x * 5.00 : x * 4.50',
-  CF1: 'x * 11.23'
+pricelist = {
+  FR1: 3.11,
+  SR1: 5.00,
+  CF1: 11.23
+}
+
+pricing = [
+  Proc.new do |cart, prices|
+    disc = 0
+    cart.each { |item, qty| disc += qty / 2 * prices[item] if item == :FR1 }
+    disc
+  end, 
+  Proc.new do |cart, prices|
+     disc = 0
+     cart.each { |item, qty| disc += qty * (prices[item] - 4.50) if (item == :SR1) && (qty > 2) }
+     disc
+  end
+]
+
+# Baskets and expected totals
+test_set = {
+  %w[FR1 SR1 FR1 FR1 CF1] => 22.45,
+  %w[FR1 FR1] => 3.11,
+  %w[SR1 SR1 FR1 SR1] => 16.61,
+  %w[] => 0
 }
 
 describe 'Checkout process' do
-  it 'should return 22.45 to basket %w[FR1 SR1 FR1 FR1 CF1]' do
-    items = %w[FR1 SR1 FR1 FR1 CF1]
-    co = Checkout.new(pricing)
-    items.each { |item| co.scan(item) }
-    expect(co.total).to eq(22.45)
-  end
-
-  it 'should return 3.11 for basket %w[FR1 FR1]' do
-    items = %w[FR1 FR1]
-    co = Checkout.new(pricing)
-    items.each { |item| co.scan(item) }
-    expect(co.total).to eq(3.11)
-  end
-
-  it 'should return 16.61 for basket %w[SR1 SR1 FR1 SR1]' do
-    items = %w[SR1 SR1 FR1 SR1]
-    co = Checkout.new(pricing)
-    items.each { |item| co.scan(item) }
-    expect(co.total).to eq(16.61)
+  test_set.each do |items, total_exp| 
+    it "should return #{total_exp} to basket #{items}" do
+      co = Checkout.new(pricelist, pricing)
+      items.each { |item| co.scan(item) }
+      expect(co.total).to eq(total_exp)
+    end
   end
 end
